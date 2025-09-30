@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  mcp-bigquery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-bigquery-server:latest
+    container_name: mcp-bigquery-server
+    
+    # Environment variables
+    environment:
+      - BEARER_TOKEN=${BEARER_TOKEN}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HOST=0.0.0.0
+      - PORT=8080
+    
+    # Volume mounts
+    volumes:
+      # Mount credentials directory
+      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST}:/app/credentials/service-account.json:ro
+      # Optional: Mount logs directory
+      - ./logs:/app/logs
+    
+    # Port mapping (optional, for SSE transport)
+    ports:
+      - "8080:8080"
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.path.insert(0, '/app/src'); from mcp_bigquery.config import get_settings; get_settings()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only root filesystem (except specific dirs)
+    read_only: false
+    
+    # Networks
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
