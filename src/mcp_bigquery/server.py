@@ -332,10 +332,5 @@ def get_table_info(
         }
 
 
-# Initialize settings on module import
-try:
-    settings = get_settings()
-    logger.info("MCP BigQuery Server initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize MCP BigQuery Server: {e}")
-    raise
+# Settings will be lazy-loaded when tools are called
+# No need to initialize at module import time

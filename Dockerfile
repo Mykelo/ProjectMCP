@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for MCP BigQuery Server
 # Stage 1: Build stage with uv
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -16,10 +16,10 @@ COPY README.md ./
 COPY src/ ./src/
 
 # Install dependencies
-RUN uv sync --frozen --no-dev
+RUN uv sync --no-dev
 
 # Stage 2: Runtime stage
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Create non-root user
 RUN groupadd -r mcpuser && useradd -r -g mcpuser mcpuser
@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sys; sys.path.insert(0, '/app/src'); from mcp_bigquery.config import get_settings; get_settings()" || exit 1
 
 # Run the MCP server
-CMD ["fastmcp", "run", "mcp_bigquery.server:mcp"]
+CMD ["fastmcp", "run", "src/mcp_bigquery/server.py:mcp", "--transport", "http"]
