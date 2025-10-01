@@ -4,19 +4,15 @@ import logging
 from typing import Optional
 
 from fastmcp import FastMCP
-from fastmcp.server.auth.providers.jwt import JWTVerifier
 from pydantic import Field
 
 from mcp_bigquery.bigquery_client import BigQueryClientError, get_bigquery_client
-from mcp_bigquery.auth import create_jwt_verifier
 
 # Initialize logging
 logger = logging.getLogger(__name__)
 
-verifier = create_jwt_verifier()
-
 # Initialize FastMCP server
-mcp = FastMCP("BigQuery MCP Server", auth=verifier)
+mcp = FastMCP("BigQuery MCP Server")
 
 
 @mcp.tool()

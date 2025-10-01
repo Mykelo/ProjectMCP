@@ -38,6 +38,7 @@ COPY --from=builder /app/pyproject.toml /app/
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
+ENV HOME=/app
 
 # Create directory for credentials (to be mounted)
 RUN mkdir -p /app/credentials && chown -R mcpuser:mcpuser /app
