@@ -82,3 +82,5 @@ dmypy.json
 scratch/
 temp/
 tmp/
+
+credentials/

@@ -32,6 +32,8 @@ ProjectMCP/
 │   ├── auth.py               # Authentication middleware
 │   ├── bigquery_client.py    # BigQuery wrapper
 │   └── config.py             # Configuration
+├── scripts/                  # Utility scripts
+│   └── generate_jwt_token.py # JWT token generator for testing
 ├── tests/                    # Test suite
 ├── docs/                     # Documentation
 ├── Dockerfile                # Container definition
@@ -111,6 +113,12 @@ uv run black src/ tests/
 
 # Type checking
 uv run mypy src/
+
+# Generate JWT tokens and save keys to files
+uv run python scripts/generate_jwt_token.py --public-key-file public_key.pem --private-key-file private_key.pem --token-file token.txt
+
+# View help for all options
+uv run python scripts/generate_jwt_token.py --help
 ```
 
 ## 📊 Implementation Progress
@@ -120,6 +128,7 @@ See [tasks.md](tasks.md) for detailed progress tracking.
 **Current Status**: 🔴 Planning Phase
 
 ### Phases
+
 1. ⏳ Phase 1: Project Setup (0/2 complete)
 2. ⏳ Phase 2: Core Implementation (0/4 complete)
 3. ⏳ Phase 3: Containerization (0/3 complete)

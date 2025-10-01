@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Optional
-
+import sys
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,15 +15,24 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         env_ignore_empty=True,  # Ignore if .env file doesn't exist
-        case_sensitive=True,
+        case_sensitive=False,
         extra="ignore",
     )
 
     # Authentication
-    bearer_token: str = Field(
+    jwt_public_key_path: Optional[Path] = Field(
+        None,
+        description="JWT public key file",
+    )
+    jwt_issuer: str = Field(
         ...,
-        min_length=32,
-        description="Bearer token for MCP authentication (minimum 32 characters)",
+        min_length=1,
+        description="JWT issuer",
+    )
+    jwt_audience: str = Field(
+        ...,
+        min_length=1,
+        description="JWT audience",
     )
 
     # Google Cloud Configuration
@@ -68,16 +77,6 @@ class Settings(BaseSettings):
         if v_upper not in valid_levels:
             raise ValueError(f"Invalid log level: {v}. Must be one of {valid_levels}")
         return v_upper
-
-    @field_validator("bearer_token")
-    @classmethod
-    def validate_bearer_token(cls, v: str) -> str:
-        """Validate bearer token strength."""
-        if len(v) < 32:
-            raise ValueError("Bearer token must be at least 32 characters long")
-        if v == "your-secure-bearer-token-here-at-least-32-characters":
-            raise ValueError("Please set a real bearer token, not the example value")
-        return v
 
     def configure_logging(self) -> None:
         """Configure application logging based on settings."""
