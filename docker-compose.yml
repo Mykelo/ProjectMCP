@@ -14,7 +14,7 @@ services:
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - HOST=0.0.0.0
-      - PORT=8080
+      - PORT=8000
       - JWT_PUBLIC_KEY_PATH=${JWT_PUBLIC_KEY_PATH}
       - JWT_ISSUER=${JWT_ISSUER}
       - JWT_AUDIENCE=${JWT_AUDIENCE}
@@ -28,7 +28,7 @@ services:
     
     # Port mapping (optional, for SSE transport)
     ports:
-      - "8080:8080"
+      - "8000:8000"
     
     # Restart policy
     restart: unless-stopped

@@ -46,11 +46,11 @@ RUN mkdir -p /app/credentials && chown -R mcpuser:mcpuser /app
 USER mcpuser
 
 # Expose port (optional, for SSE transport)
-EXPOSE 8080
+EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sys; sys.path.insert(0, '/app/src'); from mcp_bigquery.config import get_settings; get_settings()" || exit 1
 
 # Run the MCP server
-CMD ["fastmcp", "run", "src/mcp_bigquery/server.py:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["fastmcp", "run", "src/mcp_bigquery/server.py:mcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
