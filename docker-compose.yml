@@ -10,17 +10,19 @@ services:
     
     # Environment variables
     environment:
-      - BEARER_TOKEN=${BEARER_TOKEN}
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service-account.json
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - HOST=0.0.0.0
       - PORT=8080
+      - JWT_PUBLIC_KEY_PATH=${JWT_PUBLIC_KEY_PATH}
+      - JWT_ISSUER=${JWT_ISSUER}
+      - JWT_AUDIENCE=${JWT_AUDIENCE}
     
     # Volume mounts
     volumes:
       # Mount credentials directory
-      - ${GOOGLE_APPLICATION_CREDENTIALS_HOST}:/app/credentials/service-account.json:ro
+      - ./credentials:/app/credentials:ro
       # Optional: Mount logs directory
       - ./logs:/app/logs
     
