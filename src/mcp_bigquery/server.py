@@ -3,16 +3,22 @@
 import logging
 from typing import Optional
 
-from fastmcp import FastMCP
+from fastapi.responses import JSONResponse
+from fastmcp import FastMCP, Context
 from pydantic import Field
+from fastapi import FastAPI, Request, HTTPException
+import uvicorn
+from fastmcp.server.auth.providers.jwt import JWTVerifier
+from mcp_bigquery.auth import create_jwt_verifier
 
 from mcp_bigquery.bigquery_client import BigQueryClientError, get_bigquery_client
 
-# Initialize logging
+
 logger = logging.getLogger(__name__)
 
-# Initialize FastMCP server
 mcp = FastMCP("BigQuery MCP Server")
+
+# Initialize FastMCP server
 
 
 @mcp.tool()
@@ -331,7 +337,27 @@ def get_table_info(
         }
 
 
+mcp_app = mcp.http_app(path="/mcp")
+
+app = FastAPI(title="BigQuery MCP Server", lifespan=mcp_app.lifespan)
+
+verifier = create_jwt_verifier()
+
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    token = request.query_params.get("token", None)
+    info = await verifier.verify_token(token or "")
+    if not info:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    response = await call_next(request)
+    return response
+
+
+app.mount("/", mcp_app)
+
+
 # Settings will be lazy-loaded when tools are called
 # No need to initialize at module import time
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

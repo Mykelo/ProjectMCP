@@ -26,6 +26,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pydantic>=2.11.0",
     "pydantic-settings>=2.11.0",
+    "fastapi>=0.118.0",
 ]
 
 [project.optional-dependencies]
