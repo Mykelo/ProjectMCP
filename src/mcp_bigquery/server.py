@@ -345,8 +345,18 @@ verifier = create_jwt_verifier()
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    token = request.query_params.get("token", None)
+async def add_authentication_middleware(request: Request, call_next):
+    # Try to get token from headers (Authorization: Bearer ...) or query param (?token=...)
+    token = None
+
+    # 1. Get from Authorization header (prefer Bearer)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+    # 2. Fallback: get from query param
+    if not token:
+        token = request.query_params.get("token", None)
+
     info = await verifier.verify_token(token or "")
     if not info:
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
