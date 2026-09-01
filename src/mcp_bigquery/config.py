@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 import sys
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +17,7 @@ class Settings(BaseSettings):
         env_ignore_empty=True,  # Ignore if .env file doesn't exist
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     # Authentication
@@ -52,10 +53,24 @@ class Settings(BaseSettings):
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
 
-    # Optional MongoDB (URI-only; leave unset to disable mongo tools)
-    mongo_uri: str | None = Field(
+    # Optional MongoDB via SSH tunnel (leave MONGO_SSH_HOST unset to disable)
+    mongo_ssh_host: str | None = Field(
         default=None,
-        description="MongoDB connection URI (e.g. mongodb://127.0.0.1:27017)",
+        description="SSH host for the Mongo tunnel (e.g. api.projectsuite.io)",
+    )
+    mongo_ssh_username: str = Field(
+        default="suite",
+        min_length=1,
+        description="SSH username for the Mongo tunnel",
+    )
+    mongo_ssh_pkey: Path = Field(
+        default=Path("~/.ssh/id_rsa"),
+        description="SSH private key path for the Mongo tunnel",
+    )
+    mongo_ssh_key_password: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("MONGO_SSH_KEY_PASSWORD", "SSH_KEY_PASSWORD"),
+        description="Passphrase for the SSH private key",
     )
     mongo_default_database: str = Field(
         default="prelisting",

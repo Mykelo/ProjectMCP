@@ -28,6 +28,8 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "fastapi>=0.118.0",
     "pymongo>=4.10",
+    "sshtunnel>=0.4",
+    "paramiko>=3.4,<4",
 ]
 
 [project.optional-dependencies]

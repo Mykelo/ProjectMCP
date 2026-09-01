@@ -204,9 +204,18 @@ def execute_query(
 
 ---
 
-## Mongo tools (read-only, URI-only)
+## Mongo tools (read-only, SSH tunnel)
 
-Connect with `MONGO_URI`. Databases are allowlisted (`MONGO_ALLOWED_DATABASES`, default `prelisting`). There is no in-process SSH tunnel. `$where`, `$function`, and `$accumulator` are rejected. Default `maxTimeMS` is 30s (`MONGO_QUERY_TIMEOUT_MS`).
+Connect with an in-process SSH tunnel (`MONGO_SSH_HOST`, default username `suite`). PyMongo then talks to `localhost:<local_bind_port>`. Leave `MONGO_SSH_HOST` unset to disable Mongo tools. Databases are allowlisted (`MONGO_ALLOWED_DATABASES`, default `prelisting`). `$where`, `$function`, and `$accumulator` are rejected. Default `maxTimeMS` is 30s (`MONGO_QUERY_TIMEOUT_MS`).
+
+Typical env for `api.projectsuite.io`:
+
+```bash
+MONGO_SSH_HOST=api.projectsuite.io
+MONGO_SSH_USERNAME=suite
+MONGO_SSH_PKEY=~/.ssh/id_rsa
+# MONGO_SSH_KEY_PASSWORD=...   # if the key has a passphrase
+```
 
 Hex `_id` strings (24-char) are coerced to ObjectId. Results serialize ObjectId and datetime as strings.
 
@@ -292,4 +301,4 @@ Response:
 }
 ```
 
-Mongo errors use the same `{ "error": { "code", "message" } }` shape as BigQuery tools. `MONGO_NOT_CONFIGURED` is returned when `MONGO_URI` is unset.
+Mongo errors use the same `{ "error": { "code", "message" } }` shape as BigQuery tools. `MONGO_NOT_CONFIGURED` is returned when `MONGO_SSH_HOST` is unset.

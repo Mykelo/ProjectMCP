@@ -1,6 +1,7 @@
 """FastMCP server for BigQuery operations."""
 
 import logging
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi.responses import JSONResponse
@@ -12,7 +13,7 @@ from fastmcp.server.auth.providers.jwt import JWTVerifier
 from mcp_bigquery.auth import create_jwt_verifier
 
 from mcp_bigquery.bigquery_client import BigQueryClientError, get_bigquery_client
-from mcp_bigquery.mongo_client import MongoClientError, get_mongo_client
+from mcp_bigquery.mongo_client import MongoClientError, close_mongo_client, get_mongo_client
 
 
 logger = logging.getLogger(__name__)
@@ -503,7 +504,17 @@ def count_mongo_documents(
 
 mcp_app = mcp.http_app(path="/mcp")
 
-app = FastAPI(title="BigQuery MCP Server", lifespan=mcp_app.lifespan)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        async with mcp_app.lifespan(app):
+            yield
+    finally:
+        close_mongo_client()
+
+
+app = FastAPI(title="BigQuery MCP Server", lifespan=lifespan)
 
 verifier = create_jwt_verifier()
 

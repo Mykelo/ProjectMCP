@@ -7,6 +7,7 @@ import logging
 import re
 from collections.abc import Mapping
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from bson import ObjectId
@@ -14,6 +15,7 @@ from bson.json_util import RELAXED_JSON_OPTIONS
 from bson.json_util import dumps as bson_dumps
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+from sshtunnel import SSHTunnelForwarder
 
 from mcp_bigquery.config import get_settings
 
@@ -60,20 +62,58 @@ class MongoQueryClient:
     def __init__(self, pymongo_client: Any | None = None) -> None:
         settings = get_settings()
         self._settings = settings
+        self._tunnel: Any | None = None
         if pymongo_client is not None:
             self._client = pymongo_client
             return
-        uri = (settings.mongo_uri or "").strip()
-        if not uri:
+        host = (settings.mongo_ssh_host or "").strip()
+        if not host:
             raise MongoClientError(
-                "Mongo is not configured: set MONGO_URI",
+                "Mongo is not configured: set MONGO_SSH_HOST",
                 code="MONGO_NOT_CONFIGURED",
             )
         try:
-            self._client = MongoClient(uri)
+            self._tunnel = SSHTunnelForwarder(
+                host,
+                ssh_username=settings.mongo_ssh_username,
+                remote_bind_address=("127.0.0.1", 27017),
+                ssh_pkey=str(Path(settings.mongo_ssh_pkey).expanduser()),
+                ssh_private_key_password=settings.mongo_ssh_key_password,
+            )
+            self._tunnel.start()
+            self._client = MongoClient("localhost", self._tunnel.local_bind_port)
+            logger.info(
+                "Mongo SSH tunnel started to %s@%s via localhost:%s",
+                settings.mongo_ssh_username,
+                host,
+                self._tunnel.local_bind_port,
+            )
+        except MongoClientError:
+            raise
         except Exception as exc:
             logger.error("Failed to initialize Mongo client: %s", exc)
+            self._stop_tunnel()
             raise MongoClientError(f"Failed to initialize Mongo client: {exc}") from exc
+
+    def close(self) -> None:
+        """Close the PyMongo client and stop the SSH tunnel if one was started."""
+        client = getattr(self, "_client", None)
+        if client is not None:
+            closer = getattr(client, "close", None)
+            if callable(closer):
+                closer()
+            self._client = None
+        self._stop_tunnel()
+
+    def _stop_tunnel(self) -> None:
+        tunnel = getattr(self, "_tunnel", None)
+        if tunnel is None:
+            return
+        try:
+            tunnel.stop()
+        except Exception as exc:
+            logger.warning("Error stopping Mongo SSH tunnel: %s", exc)
+        self._tunnel = None
 
     def list_collections(self, database: str | None = None) -> dict[str, Any]:
         db_name = self._resolve_database(database)
@@ -296,3 +336,11 @@ def get_mongo_client() -> MongoQueryClient:
     if _client is None:
         _client = MongoQueryClient()
     return _client
+
+
+def close_mongo_client() -> None:
+    """Close the global Mongo client and its SSH tunnel, if any."""
+    global _client
+    if _client is not None:
+        _client.close()
+        _client = None

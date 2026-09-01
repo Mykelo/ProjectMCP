@@ -21,13 +21,13 @@ def test_list_mongo_collections_tool_maps_not_configured() -> None:
     with patch(
         "mcp_bigquery.server.get_mongo_client",
         side_effect=MongoClientError(
-            "Mongo is not configured: set MONGO_URI",
+            "Mongo is not configured: set MONGO_SSH_HOST",
             code="MONGO_NOT_CONFIGURED",
         ),
     ):
         result = list_mongo_collections.fn(database=None)
     assert result["error"]["code"] == "MONGO_NOT_CONFIGURED"
-    assert "MONGO_URI" in result["error"]["message"]
+    assert "MONGO_SSH_HOST" in result["error"]["message"]
 
 
 def test_find_mongo_documents_tool_returns_client_result() -> None:

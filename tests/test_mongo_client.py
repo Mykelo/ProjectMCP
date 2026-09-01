@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,13 @@ import pytest
 from bson import ObjectId
 
 from mcp_bigquery.mongo_client import MongoClientError, MongoQueryClient
+
+
+def test_paramiko_exposes_dsskey_required_by_sshtunnel() -> None:
+    """sshtunnel 0.4 reads paramiko.DSSKey when loading ssh_pkey (Paramiko 4+ removed it)."""
+    import paramiko
+
+    assert hasattr(paramiko, "DSSKey")
 
 
 class FakeCursor:
@@ -123,7 +131,10 @@ def _project(doc: dict[str, Any], projection: dict[str, Any]) -> dict[str, Any]:
 
 def _settings(**overrides: Any) -> Mock:
     settings = Mock()
-    settings.mongo_uri = "mongodb://localhost:27017"
+    settings.mongo_ssh_host = None
+    settings.mongo_ssh_username = "suite"
+    settings.mongo_ssh_pkey = Path("~/.ssh/id_rsa")
+    settings.mongo_ssh_key_password = None
     settings.mongo_default_database = "prelisting"
     settings.allowed_mongo_databases = ("prelisting",)
     settings.mongo_query_timeout_ms = 30_000
@@ -143,13 +154,60 @@ def _client(
         return MongoQueryClient(pymongo_client=pymongo_client), db
 
 
-def test_missing_uri_raises_not_configured() -> None:
-    settings = _settings(mongo_uri=None)
+def test_missing_ssh_host_raises_not_configured() -> None:
+    settings = _settings(mongo_ssh_host=None)
     with patch("mcp_bigquery.mongo_client.get_settings", return_value=settings):
         with pytest.raises(MongoClientError) as exc_info:
             MongoQueryClient()
     assert exc_info.value.code == "MONGO_NOT_CONFIGURED"
-    assert "MONGO_URI" in str(exc_info.value)
+    assert "MONGO_SSH_HOST" in str(exc_info.value)
+
+
+def test_ssh_tunnel_connects_via_local_bind_port() -> None:
+    settings = _settings(
+        mongo_ssh_host="api.projectsuite.io",
+        mongo_ssh_username="suite",
+        mongo_ssh_pkey=Path("/tmp/id_rsa"),
+        mongo_ssh_key_password="secret",
+    )
+    tunnel = Mock()
+    tunnel.local_bind_port = 54321
+    pymongo_client = Mock()
+    with (
+        patch("mcp_bigquery.mongo_client.get_settings", return_value=settings),
+        patch("mcp_bigquery.mongo_client.SSHTunnelForwarder", return_value=tunnel) as tunnel_cls,
+        patch("mcp_bigquery.mongo_client.MongoClient", return_value=pymongo_client) as mongo_cls,
+    ):
+        client = MongoQueryClient()
+
+    tunnel_cls.assert_called_once_with(
+        "api.projectsuite.io",
+        ssh_username="suite",
+        remote_bind_address=("127.0.0.1", 27017),
+        ssh_pkey="/tmp/id_rsa",
+        ssh_private_key_password="secret",
+    )
+    tunnel.start.assert_called_once()
+    mongo_cls.assert_called_once_with("localhost", 54321)
+    assert client._client is pymongo_client
+    assert client._tunnel is tunnel
+
+
+def test_close_stops_ssh_tunnel() -> None:
+    settings = _settings(mongo_ssh_host="api.projectsuite.io")
+    tunnel = Mock()
+    tunnel.local_bind_port = 1234
+    pymongo_client = Mock()
+    with (
+        patch("mcp_bigquery.mongo_client.get_settings", return_value=settings),
+        patch("mcp_bigquery.mongo_client.SSHTunnelForwarder", return_value=tunnel),
+        patch("mcp_bigquery.mongo_client.MongoClient", return_value=pymongo_client),
+    ):
+        client = MongoQueryClient()
+    client.close()
+    pymongo_client.close.assert_called_once()
+    tunnel.stop.assert_called_once()
+    assert client._tunnel is None
 
 
 def test_allowlist_rejects_other_database() -> None:

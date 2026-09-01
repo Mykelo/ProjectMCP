@@ -23,7 +23,10 @@ services:
       - FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET=${FASTMCP_SERVER_AUTH_GOOGLE_CLIENT_SECRET}
       - FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL=${FASTMCP_SERVER_AUTH_GOOGLE_BASE_URL}
       - FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES=${FASTMCP_SERVER_AUTH_GOOGLE_REQUIRED_SCOPES}
-      - MONGO_URI=${MONGO_URI:-}
+      - MONGO_SSH_HOST=${MONGO_SSH_HOST:-}
+      - MONGO_SSH_USERNAME=${MONGO_SSH_USERNAME:-suite}
+      - MONGO_SSH_PKEY=/app/.ssh/id_rsa
+      - MONGO_SSH_KEY_PASSWORD=${MONGO_SSH_KEY_PASSWORD:-}
       - MONGO_DEFAULT_DATABASE=${MONGO_DEFAULT_DATABASE:-prelisting}
       - MONGO_ALLOWED_DATABASES=${MONGO_ALLOWED_DATABASES:-prelisting}
       - MONGO_QUERY_TIMEOUT_MS=${MONGO_QUERY_TIMEOUT_MS:-30000}
@@ -34,6 +37,8 @@ services:
       - ./credentials:/app/credentials:ro
       # Optional: Mount logs directory
       - ./logs:/app/logs
+      # SSH private key for the Mongo tunnel (container HOME is /app)
+      - ${MONGO_SSH_PKEY:-~/.ssh/id_rsa}:/app/.ssh/id_rsa:ro
     
     # Port mapping (optional, for SSE transport)
     ports:
