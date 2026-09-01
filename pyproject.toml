@@ -27,6 +27,7 @@ dependencies = [
     "pydantic>=2.11.0",
     "pydantic-settings>=2.11.0",
     "fastapi>=0.118.0",
+    "pymongo>=4.10",
 ]
 
 [project.optional-dependencies]

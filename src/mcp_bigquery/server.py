@@ -12,6 +12,7 @@ from fastmcp.server.auth.providers.jwt import JWTVerifier
 from mcp_bigquery.auth import create_jwt_verifier
 
 from mcp_bigquery.bigquery_client import BigQueryClientError, get_bigquery_client
+from mcp_bigquery.mongo_client import MongoClientError, get_mongo_client
 
 
 logger = logging.getLogger(__name__)
@@ -335,6 +336,169 @@ def get_table_info(
                 "message": f"Unexpected error: {str(e)}",
             }
         }
+
+
+def _mongo_error(exc: MongoClientError) -> dict:
+    logger.error("Mongo tool error: %s", exc)
+    return {"error": {"code": exc.code, "message": str(exc)}}
+
+
+def _mongo_internal_error(exc: Exception) -> dict:
+    logger.error("Unexpected mongo error: %s", exc)
+    return {
+        "error": {
+            "code": "INTERNAL_ERROR",
+            "message": f"Unexpected error: {str(exc)}",
+        }
+    }
+
+
+@mcp.tool(tags={"mongo", "metadata", "list"})
+def list_mongo_collections(
+    database: str | None = Field(
+        default=None,
+        description="Mongo database name. Defaults to the configured default (prelisting).",
+    ),
+) -> dict:
+    """
+    List collections in an allowlisted Mongo database.
+
+    Known prelisting collections include supplier_items, suppliers, master_nokeepa,
+    purchasingLog, potracker, and related OMS collections. Unknown names are still
+    listed; description is null when the catalog has no entry.
+    """
+    try:
+        logger.info("Listing mongo collections in database=%s", database)
+        return get_mongo_client().list_collections(database=database)
+    except MongoClientError as exc:
+        return _mongo_error(exc)
+    except Exception as exc:
+        return _mongo_internal_error(exc)
+
+
+@mcp.tool(tags={"mongo", "metadata"})
+def get_mongo_collection_info(
+    collection: str = Field(
+        ...,
+        description="Collection name (for example supplier_items)",
+        min_length=1,
+    ),
+    database: str | None = Field(
+        default=None,
+        description="Mongo database name. Defaults to prelisting.",
+    ),
+    sample_size: int = Field(
+        default=20,
+        description="Number of documents to sample when inferring field types",
+        ge=1,
+        le=100,
+    ),
+) -> dict:
+    """
+    Get estimated document count, indexes, and field types inferred from a sample.
+    """
+    try:
+        logger.info("Getting mongo collection info for %s.%s", database, collection)
+        return get_mongo_client().get_collection_info(
+            collection=collection,
+            database=database,
+            sample_size=sample_size,
+        )
+    except MongoClientError as exc:
+        return _mongo_error(exc)
+    except Exception as exc:
+        return _mongo_internal_error(exc)
+
+
+@mcp.tool(tags={"mongo", "query"})
+def find_mongo_documents(
+    collection: str = Field(
+        ...,
+        description="Collection name to query",
+        min_length=1,
+    ),
+    filter: dict | None = Field(
+        default=None,
+        description="MongoDB query filter object. Hex _id strings are coerced to ObjectId.",
+    ),
+    projection: dict | None = Field(
+        default=None,
+        description="MongoDB projection (inclusion or exclusion). Example: {\"asin\": 1, \"_id\": 0}",
+    ),
+    sort: dict | None = Field(
+        default=None,
+        description="Sort spec as field to direction (1 ascending, -1 descending). Example: {\"asin\": 1}",
+    ),
+    skip: int = Field(
+        default=0,
+        description="Number of documents to skip",
+        ge=0,
+    ),
+    limit: int = Field(
+        default=100,
+        description="Maximum documents to return (1-1000)",
+        ge=1,
+        le=1000,
+    ),
+    database: str | None = Field(
+        default=None,
+        description="Mongo database name. Defaults to prelisting.",
+    ),
+) -> dict:
+    """
+    Find documents in a Mongo collection. Read-only. Default limit is 100, max 1000.
+    Prefer count_mongo_documents before a broad find.
+    """
+    try:
+        logger.info(
+            "Finding mongo documents in %s.%s limit=%s",
+            database,
+            collection,
+            limit,
+        )
+        return get_mongo_client().find_documents(
+            collection=collection,
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            skip=skip,
+            limit=limit,
+            database=database,
+        )
+    except MongoClientError as exc:
+        return _mongo_error(exc)
+    except Exception as exc:
+        return _mongo_internal_error(exc)
+
+
+@mcp.tool(tags={"mongo", "query"})
+def count_mongo_documents(
+    collection: str = Field(
+        ...,
+        description="Collection name to count",
+        min_length=1,
+    ),
+    filter: dict | None = Field(
+        default=None,
+        description="MongoDB query filter object. Empty or omitted counts all documents.",
+    ),
+    database: str | None = Field(
+        default=None,
+        description="Mongo database name. Defaults to prelisting.",
+    ),
+) -> dict:
+    """Count documents matching a filter without returning the documents."""
+    try:
+        logger.info("Counting mongo documents in %s.%s", database, collection)
+        return get_mongo_client().count_documents(
+            collection=collection,
+            filter=filter,
+            database=database,
+        )
+    except MongoClientError as exc:
+        return _mongo_error(exc)
+    except Exception as exc:
+        return _mongo_internal_error(exc)
 
 
 mcp_app = mcp.http_app(path="/mcp")

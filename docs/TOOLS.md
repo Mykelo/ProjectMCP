@@ -201,3 +201,95 @@ def execute_query(
 - Optional BigQuery Storage API for faster reads (`to_arrow`/`bqstorage_client`).
 - Streaming results via iterables (`to_arrow_iterable`, `to_dataframe_iterable`).
 - Dataset/table allowlists, per-token access controls.
+
+---
+
+## Mongo tools (read-only, URI-only)
+
+Connect with `MONGO_URI`. Databases are allowlisted (`MONGO_ALLOWED_DATABASES`, default `prelisting`). There is no in-process SSH tunnel. `$where`, `$function`, and `$accumulator` are rejected. Default `maxTimeMS` is 30s (`MONGO_QUERY_TIMEOUT_MS`).
+
+Hex `_id` strings (24-char) are coerced to ObjectId. Results serialize ObjectId and datetime as strings.
+
+### Tool: list_mongo_collections
+
+```python
+@mcp.tool(tags={"mongo", "metadata", "list"})
+def list_mongo_collections(
+    database: Optional[str] = None,
+) -> dict:
+    """List collections in an allowlisted Mongo database (default: prelisting)."""
+```
+
+Response:
+```json
+{
+  "database": "prelisting",
+  "collections": [
+    {"name": "supplier_items", "description": "Supplier catalog items (ASINs, costs, tiers)"},
+    {"name": "other_col", "description": null}
+  ]
+}
+```
+
+### Tool: get_mongo_collection_info
+
+```python
+@mcp.tool(tags={"mongo", "metadata"})
+def get_mongo_collection_info(
+    collection: str,
+    database: Optional[str] = None,
+    sample_size: int = 20,
+) -> dict:
+    """Estimated count, indexes, and field types inferred from a sample."""
+```
+
+Response includes `estimated_count`, `indexes` (`name` + `keys`), and `inferred_fields` (`name` + `type`).
+
+### Tool: find_mongo_documents
+
+```python
+@mcp.tool(tags={"mongo", "query"})
+def find_mongo_documents(
+    collection: str,
+    filter: Optional[dict] = None,
+    projection: Optional[dict] = None,
+    sort: Optional[dict] = None,
+    skip: int = 0,
+    limit: int = 100,
+    database: Optional[str] = None,
+) -> dict:
+    """Read-only find. Default limit 100, max 1000."""
+```
+
+Response:
+```json
+{
+  "database": "prelisting",
+  "collection": "supplier_items",
+  "documents": [{"_id": "507f1f77bcf86cd799439011", "asin": "B001"}],
+  "returned": 1
+}
+```
+
+### Tool: count_mongo_documents
+
+```python
+@mcp.tool(tags={"mongo", "query"})
+def count_mongo_documents(
+    collection: str,
+    filter: Optional[dict] = None,
+    database: Optional[str] = None,
+) -> dict:
+    """Count matching documents without returning them."""
+```
+
+Response:
+```json
+{
+  "database": "prelisting",
+  "collection": "supplier_items",
+  "count": 42
+}
+```
+
+Mongo errors use the same `{ "error": { "code", "message" } }` shape as BigQuery tools. `MONGO_NOT_CONFIGURED` is returned when `MONGO_URI` is unset.

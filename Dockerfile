@@ -54,4 +54,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sys; sys.path.insert(0, '/app/src'); from mcp_bigquery.config import get_settings; get_settings()" || exit 1
 
 # Run the FastAPI application
-CMD ["uvicorn", "src.mcp_bigquery.server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "mcp_bigquery.server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -52,9 +52,38 @@ class Settings(BaseSettings):
         description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
     )
 
+    # Optional MongoDB (URI-only; leave unset to disable mongo tools)
+    mongo_uri: str | None = Field(
+        default=None,
+        description="MongoDB connection URI (e.g. mongodb://127.0.0.1:27017)",
+    )
+    mongo_default_database: str = Field(
+        default="prelisting",
+        min_length=1,
+        description="Default Mongo database for tools when none is passed",
+    )
+    mongo_allowed_databases: str = Field(
+        default="prelisting",
+        description="Comma-separated allowlist of Mongo databases",
+    )
+    mongo_query_timeout_ms: int = Field(
+        default=30_000,
+        ge=1,
+        le=300_000,
+        description="maxTimeMS applied to Mongo find and count",
+    )
+
     # Optional Server Configuration
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8080, ge=1, le=65535, description="Server port")
+
+    @property
+    def allowed_mongo_databases(self) -> tuple[str, ...]:
+        """Parsed, stripped database allowlist."""
+        names = tuple(
+            part.strip() for part in self.mongo_allowed_databases.split(",") if part.strip()
+        )
+        return names or ("prelisting",)
 
     @field_validator("google_application_credentials")
     @classmethod
