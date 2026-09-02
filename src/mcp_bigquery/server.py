@@ -365,8 +365,8 @@ def list_mongo_collections(
     List collections in an allowlisted Mongo database.
 
     Known prelisting collections include supplier_items, suppliers, master_nokeepa,
-    purchasingLog, potracker, and related OMS collections. Unknown names are still
-    listed; description is null when the catalog has no entry.
+    purchasingLog, potracker, warehouse, brand-ops, and related OMS collections.
+    Unknown names are still listed; description is null when the catalog has no entry.
     """
     try:
         logger.info("Listing mongo collections in database=%s", database)

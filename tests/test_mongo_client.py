@@ -288,12 +288,18 @@ def test_list_collections_attaches_known_descriptions() -> None:
     client, _ = _client(
         {
             "supplier_items": FakeCollection(),
+            "events": FakeCollection(),
+            "supplier_events": FakeCollection(),
+            "sellthrough": FakeCollection(),
             "mystery_col": FakeCollection(),
         }
     )
     result = client.list_collections()
     by_name = {item["name"]: item["description"] for item in result["collections"]}
     assert "supplier catalog" in (by_name["supplier_items"] or "").lower()
+    assert "snapshot" in (by_name["events"] or "").lower()
+    assert "calendar" in (by_name["supplier_events"] or "").lower()
+    assert "projection" in (by_name["sellthrough"] or "").lower()
     assert by_name["mystery_col"] is None
     assert result["database"] == "prelisting"
 

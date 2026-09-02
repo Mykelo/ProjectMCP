@@ -234,7 +234,7 @@ Response:
 {
   "database": "prelisting",
   "collections": [
-    {"name": "supplier_items", "description": "Supplier catalog items (ASINs, costs, tiers)"},
+    {"name": "supplier_items", "description": "Supplier catalog SKUs: ASINs, costs, MAP/MSRP, parents, tiers"},
     {"name": "other_col", "description": null}
   ]
 }
